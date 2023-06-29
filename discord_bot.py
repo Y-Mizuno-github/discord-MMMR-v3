@@ -15,6 +15,8 @@ from collections import deque
 #import dropbox
 #import requests
 
+from dotenv import load_dotenv
+
 import server_member_db as db
 
 intents = discord.Intents.default()
@@ -27,6 +29,8 @@ Audio_queue = None
 length_queue = 10
 
 URL_pattern = "https?://[\w/:%#\$&\?\(\)~\.=\+\-]+"
+
+load_dotenv()
 
 # 起動時
 @bot_client.event
@@ -49,6 +53,8 @@ async def on_ready():
     server_db = db.server_table()
     member_db = db.member_table()
 
+    all_dnd_channel = dict()
+
 # ボイチャ入室通知
 @bot_client.event
 async def on_voice_state_update(member, before, after):
@@ -56,6 +62,8 @@ async def on_voice_state_update(member, before, after):
 
     global server_db
     global member_db
+
+    global all_dnd_channel
     
     # チャンネルへの入室ステータスが変更されたとき（ミュートON、OFFに反応しないように分岐）
     # 通知メッセージを書き込むテキストチャンネル（チャンネルIDを指定）
@@ -85,6 +93,7 @@ async def on_voice_state_update(member, before, after):
             if after.channel.id == channel_id_dnd:
                 return
             if status_member_dnd == 0 and member_bool_dnd == 1:
+                all_dnd_channel[after.channel.id] = True
                 return
             notify_name, status = server_db.get_metrics(member.id,"notify_name")
             if status == 0:
@@ -92,8 +101,12 @@ async def on_voice_state_update(member, before, after):
             else:
                 await botRoom.send( member.name + " が参加しました!")
     if before.channel is not None and after.channel is None: # 退出
+        if before.channel.id == channel_id_dnd:
+            return
         if len(before.channel.members) == 0: # 誰も居なくなった場合
-            await botRoom.send("ボイスチャンネル "+ before.channel.name + " に誰もいなくなりました")
+            if status_member_dnd == 0 and member_bool_dnd == 1:
+                return
+            await botRoom.send(before.channel.name + " に誰もいなくなりました")
 
     if bool_VC_connected and after.channel is None: #  MMMR自動退出処理
         if member.id != bot_client.user.id:
@@ -111,12 +124,8 @@ async def on_voice_state_update(member, before, after):
 async def set_notify_ch_command(interaction: discord.Interaction,channel:str):
     global server_db
 
-    print(channel)
-    print(type(channel))
-
     guild_id = interaction.guild_id
-    print(guild_id)
-    print(type(guild_id))
+
     timeout_value = 10
 
     while 1:
@@ -139,7 +148,7 @@ async def set_dnd_ch_command(interaction: discord.Interaction,channel:str):#デ�
     timeout_value = 10
     
     while 1:
-        status = server_db.set_metrics(guild_id, "DND_channel", channel)
+        status = server_db.set_metrics(guild_id, "dnd_channel", channel)
         if status == 0:
             break
         timeout_value += 1
@@ -150,4 +159,4 @@ async def set_dnd_ch_command(interaction: discord.Interaction,channel:str):#デ�
     return_text = "非通知ボイスチャンネルが設定されました"
     await interaction.response.send_message(return_text,ephemeral=True)
 
-bot_client.run("")
+bot_client.run(os.environ['DISCORD_KEY'])

@@ -22,13 +22,13 @@ class server_table:
         row = self.curs.fetchall()
 
         if not row:
-            print("Error (server_table:get_metrics: key error)")
+            print("entry not exist (server_table:get_metrics)")
             return None, -1
 
         if metrics == "notify_channel" or metrics == "dnd_channel" or metrics == "dropbox_token":
             return row[0][metrics], 0
         else:
-            print("Error (server_tableget_metrics: metrics error)")
+            print("metrics error (server_table:get_metrics)")
             return None, -2
 
     def set_metrics(self, id:int, metrics:str, value:str) -> int:
@@ -45,7 +45,7 @@ class server_table:
         elif metrics == "dropbox_token":
             sql_update = "UPDATE server SET dropbox_token = ? WHERE id = ?"
         else:
-            print("Error (server_table:set_metrics: metrics error)")
+            print("metrics error (server_table:set_metrics)")
             return -2
         
         data = (value, id)
@@ -78,7 +78,7 @@ class member_table:
         row = self.curs.fetchall()
 
         if not row:
-            print("Error (member_table:get_metrics: key error)")
+            print("entry not exist (member_table:get_metrics)")
             return None, -1
 
         if metrics == "voice_tone" or metrics == "voice_speed" or metrics == "notify_name":
@@ -87,7 +87,7 @@ class member_table:
             else:
                 return row[0][metrics], 0
         else:
-            print("Error (member_table:get_metrics: metrics error)")
+            print("metrics error (member_table:get_metrics)")
             return None, -2
 
     def set_metrics(self, member_id:int, server_id:int, metrics:str, value:str) -> int:
@@ -104,7 +104,7 @@ class member_table:
         elif metrics == "notify_name":
             sql_update = "UPDATE member SET notify_name = ? WHERE member_id = ? and server_id = ?"
         else:
-            print("Error (member_table:set_metrics: metrics error)")
+            print("metrics error (member_table:set_metrics)")
             return -2       
         data = (value, member_id, server_id)
         self.curs.execute(sql_update,data)
@@ -116,7 +116,7 @@ class member_table:
         row = self.curs.fetchall()
 
         if not row:
-            print("Error (member_table:get_bool_DND: key error)")
+            print("entry not exist (member_table:get_bool_DND)")
             return (None, -1)
         
         return (row[0]["DND"], 0)
@@ -126,7 +126,7 @@ class member_table:
         row = self.curs.fetchall()
 
         if not row:
-            print("Error (member_table:get_bool_admin: key error)")
+            print("entry not exist (member_table:get_bool_admin)")
             return (None, -1)
         
         return (row[0]["admin"], 0)
