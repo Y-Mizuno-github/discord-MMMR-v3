@@ -16,7 +16,7 @@ class server_table:
         if not self.bool_db_exist:
             self.curs.execute('''CREATE TABLE server(id integer primary key, notify_channel text, dnd_channel text, dropbox_token text, admin text)''')
 
-    def get_metrics(self, id:int, metrics:str):
+    def get_metrics(self, id:int, metrics:str) -> tuple(str, int):
         self.curs.execute("SELECT * FROM server WHERE ID=?", (id,))
         row = self.curs.fetchall()
 
@@ -71,7 +71,7 @@ class member_table:
         if not self.bool_db_exist:
             self.curs.execute('''CREATE TABLE member(member_id integer, server_id integer, voice_tone str, voice_speed str, notify_name str, DND bool, admin bool, primary key(member_id, server_id))''')
 
-    def get_metrics(self, member_id:int, server_id:int, metrics:str):
+    def get_metrics(self, member_id:int, server_id:int, metrics:str) -> tuple(str, int):
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
         row = self.curs.fetchall()
 
