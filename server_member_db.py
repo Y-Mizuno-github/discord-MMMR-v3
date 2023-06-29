@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Tuple
 
 class server_table:
     def __init__(self):
@@ -16,21 +17,21 @@ class server_table:
         if not self.bool_db_exist:
             self.curs.execute('''CREATE TABLE server(id integer primary key, notify_channel text, dnd_channel text, dropbox_token text, admin text)''')
 
-    def get_metrics(self, id:int, metrics:str) -> tuple(str, int):
+    def get_metrics(self, id:int, metrics:str) -> Tuple[str, int]:
         self.curs.execute("SELECT * FROM server WHERE ID=?", (id,))
         row = self.curs.fetchall()
 
         if not row:
-            print("Error (get_metrics: key error)")
-            return (None, -1)
+            print("Error (server_table:get_metrics: key error)")
+            return None, -1
 
         if metrics == "notify_channel" or metrics == "dnd_channel" or metrics == "dropbox_token":
-            return (row[0][metrics], 0)
+            return row[0][metrics], 0
         else:
-            print("Error (get_metrics: metrics error)")
-            return (None, -2)
+            print("Error (server_tableget_metrics: metrics error)")
+            return None, -2
 
-    def set_metrics(self, id:int, metrics:str, value:str):
+    def set_metrics(self, id:int, metrics:str, value:str) -> int:
         self.curs.execute("SELECT * FROM server WHERE id=?", (id,))
         if self.curs.fetchone() == None: # entry is not exist
             sql = 'INSERT INTO server (id, notify_channel, dnd_channel, dropbox_token, admin) values (?,?,?,?,?)'
@@ -44,11 +45,12 @@ class server_table:
         elif metrics == "dropbox_token":
             sql_update = "UPDATE server SET dropbox_token = ? WHERE id = ?"
         else:
-            print("Error (set_metrics: metrics error)")
+            print("Error (server_table:set_metrics: metrics error)")
             return -2
         
         data = (value, id)
         self.curs.execute(sql_update,data)
+        self.conn.commit()
         return 0
 
     def __del__(self):
@@ -71,21 +73,24 @@ class member_table:
         if not self.bool_db_exist:
             self.curs.execute('''CREATE TABLE member(member_id integer, server_id integer, voice_tone str, voice_speed str, notify_name str, DND bool, admin bool, primary key(member_id, server_id))''')
 
-    def get_metrics(self, member_id:int, server_id:int, metrics:str) -> tuple(str, int):
+    def get_metrics(self, member_id:int, server_id:int, metrics:str) -> Tuple[str, int]:
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
         row = self.curs.fetchall()
 
         if not row:
-            print("Error (get_metrics: key error)")
-            return (None, -1)
+            print("Error (member_table:get_metrics: key error)")
+            return None, -1
 
         if metrics == "voice_tone" or metrics == "voice_speed" or metrics == "notify_name":
-            return (row[0][metrics], 0)
+            if row[0][metrics] == "0":
+                return None, -3
+            else:
+                return row[0][metrics], 0
         else:
-            print("Error (get_metrics: metrics error)")
-            return (None, -2)
+            print("Error (member_table:get_metrics: metrics error)")
+            return None, -2
 
-    def set_metrics(self, member_id:int, server_id:int, metrics:str, value:str):
+    def set_metrics(self, member_id:int, server_id:int, metrics:str, value:str) -> int:
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
         if self.curs.fetchone() == None: # entry is not exist
             sql = 'INSERT INTO member (member_id, server_id, voice_tone, voice_speed, notify_name, DND, admin) values (?,?,?,?,?,?,?)'
@@ -99,11 +104,33 @@ class member_table:
         elif metrics == "notify_name":
             sql_update = "UPDATE member SET notify_name = ? WHERE member_id = ? and server_id = ?"
         else:
-            print("Error (set_metrics: metrics error)")
+            print("Error (member_table:set_metrics: metrics error)")
             return -2       
         data = (value, member_id, server_id)
         self.curs.execute(sql_update,data)
+        self.conn.commit()
         return 0
+    
+    def get_bool_DND(self, member_id:int, server_id:int) -> bool:
+        self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
+        row = self.curs.fetchall()
+
+        if not row:
+            print("Error (member_table:get_bool_DND: key error)")
+            return (None, -1)
+        
+        return (row[0]["DND"], 0)
+    
+    def get_bool_admin(self, member_id:int, server_id:int) -> bool:
+        self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
+        row = self.curs.fetchall()
+
+        if not row:
+            print("Error (member_table:get_bool_admin: key error)")
+            return (None, -1)
+        
+        return (row[0]["admin"], 0)
+
 
     def __del__(self):
         self.conn.commit()
