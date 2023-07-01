@@ -26,25 +26,29 @@ bot_client = discord.Client(intents=intents)
 app_commands_bot = app_commands
 tree = app_commands_bot.CommandTree(bot_client)
 
-Audio_queue = None
-length_queue = 10
+AudioQ = None
+lengthQ = 10
 
 URL_pattern = "https?://[\w/:%#\$&\?\(\)~\.=\+\-]+"
 
 load_dotenv()
 
+MMMR_guild_status = dict()
+
 # 起動時
 @bot_client.event
 async def on_ready():
-    global bool_VC_connected # ボイスチャンネルに接続しているかどうか（bool）
+    global dict_bool_VC_connected # ボイスチャンネルに接続しているかどうか（bool）
     global Queue_current
     global Queue_length_sound
+    global MMMR_guild_textchannel_id
 
     global server_db
     global member_db
 
     print('Login!!!')
-    bool_VC_connected = False
+    MMMR_guild_textchannel_id = dict()
+    dict_bool_VC_connected = dict()
     Queue_current = 0
     Queue_length_sound = 0
 
@@ -60,24 +64,25 @@ async def on_voice_state_update(member, before, after):
 
     global server_db
     global member_db
+    server_id = member.guild.id
 
     # MMMR自動退出処理
-    global bool_VC_connected
-    if bool_VC_connected and after.channel is None:
-        if member.id != bot_client.user.id:
-            if member.guild.voice_client.channel is before.channel:
-                num_of_member = 0
-                for i_list_in_voice in range(len(member.guild.voice_client.channel.members)):
-                    num_of_member += not member.guild.voice_client.channel.members[i_list_in_voice].bot
-                    if num_of_member == 0: # 現在残っているbotでないユーザが0のとき
-                        await asyncio.sleep(1)
-                        await member.guild.voice_client.disconnect()
-                        bool_VC_connected = False
+    global dict_bool_VC_connected
+    if server_id in dict_bool_VC_connected:
+        if dict_bool_VC_connected[server_id] and after.channel is None:
+            if member.id != bot_client.user.id:
+                if member.guild.voice_client.channel is before.channel:
+                    num_of_member = 0
+                    for i_list_in_voice in range(len(member.guild.voice_client.channel.members)):
+                        num_of_member += not member.guild.voice_client.channel.members[i_list_in_voice].bot
+                        if num_of_member == 0: # 現在残っているbotでないユーザが0のとき
+                            await asyncio.sleep(1)
+                            await member.guild.voice_client.disconnect()
+                            dict_bool_VC_connected[server_id] = False
     # MMMR自動退出処理おわり
 
     # チャンネルへの入室ステータスが変更されたとき（ミュートON、OFFに反応しないように分岐）
     # 通知メッセージを書き込むテキストチャンネル（チャンネルIDを指定）
-    server_id = member.guild.id
     channel_id_notify_str, status_notify = server_db.get_metrics(server_id,"notify_channel")
     channel_id_dnd_str, status_dnd = server_db.get_metrics(server_id,"dnd_channel")
 
@@ -113,10 +118,10 @@ async def on_voice_state_update(member, before, after):
             notify_name, status = member_db.get_metrics(member.id, server_id, "notify_name")
             if status == 0:
                 print("vc entry: notify name")
-                await botRoom.send( notify_name + " が参加しました!")
+                await botRoom.send( notify_name + " が参加しました！")
             else:
                 print("vc entry: default name")
-                await botRoom.send( member.name + " が参加しました!")
+                await botRoom.send( member.name + " が参加しました！")
     if before.channel is not None and after.channel is None: # 退出
         if channel_id_dnd is not None:
             if before.channel.id == channel_id_dnd:
@@ -220,5 +225,76 @@ async def set_notify_user_command(interaction: discord.Interaction,on_off:str):
             return
 
     await interaction.response.send_message(return_text,ephemeral=True)
+
+@tree.command(name="connect",description="MMMRをボイスチャンネルに入室させます")
+async def connect_command(interaction: discord.Interaction):
+
+    global MMMR_guild_textchannel_id
+    global dict_bool_VC_connected
+    global author_voicechannel
+    global VoiceClient_MMMR
+    global AudioQ
+    global TextQ
+
+    guild_id = interaction.user.guild.id
+
+    if guild_id in dict_bool_VC_connected:
+        if dict_bool_VC_connected[guild_id] == True:
+            return_text = "このコマンドはMMMRが入室していない時のみ利用できます"
+            await interaction.response.send_message(return_text)
+            return
+
+    author_voicechannel = interaction.user.voice.channel
+    if author_voicechannel.id is None:
+        return_text = "入室先ボイスチャンネルが特定できませんでした"
+        await interaction.response.send_message(return_text,ephemeral=True)
+        return
+    
+    VoiceClient_MMMR = await VoiceChannel.connect(author_voicechannel)
+    dict_bool_VC_connected[guild_id] = True
+    AudioQ = deque([], lengthQ)
+    TextQ = deque([], lengthQ)
+    MMMR_guild_textchannel_id[guild_id] = interaction.channel_id
+    return_text = "MMMR が参加しました！"
+    await interaction.response.send_message(return_text)
+
+
+@tree.command(name="disconnect",description="ボイスチャンネルからMMMRを退出させます")
+async def disconnect_command(interaction: discord.Interaction):
+    global itr_TextQ
+    global itr_AudioQ
+    global author_voicechannel
+    global VoiceClient_MMMR
+    global MMMR_guild_textchannel_id
+    global dict_bool_VC_connected
+    global TextQ
+    global itr_TextQ
+    global AudioQ
+    global itr_AudioQ
+
+    guild_id = interaction.user.guild.id
+
+    if guild_id not in dict_bool_VC_connected:
+        return_text = "このコマンドはMMMRが入室している時のみ利用できます"
+        await interaction.response.send_message(return_text)
+        return
+    else:
+        if dict_bool_VC_connected[guild_id] == False:
+            return_text = "このコマンドはMMMRが入室している時のみ利用できます"
+            await interaction.response.send_message(return_text)
+            return
+
+    VoiceClient_MMMR.stop()
+    print("TTS is stopped!")
+    await VoiceClient_MMMR.disconnect()
+    dict_bool_VC_connected[guild_id] = False
+    del MMMR_guild_textchannel_id[guild_id]
+
+    itr_TextQ = 0
+    itr_AudioQ = 0
+    AudioQ.clear()
+
+    return_text = "MMMR が退出しました！"
+    await interaction.response.send_message(return_text)
 
 bot_client.run(os.environ['DISCORD_KEY'])
