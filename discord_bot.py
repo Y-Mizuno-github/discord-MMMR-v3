@@ -1,9 +1,6 @@
 import os
-import traceback
 import asyncio
-import html
 import re
-import random
 
 import discord
 from discord.ext import commands
@@ -13,7 +10,6 @@ from discord import app_commands
 
 from collections import deque
 #import dropbox
-#import requests
 
 from dotenv import load_dotenv
 

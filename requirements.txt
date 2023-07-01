@@ -1,0 +1,7 @@
+numpy
+discord.py
+pysqlite3
+dropbox
+requests
+asyncio
+python-dotenv

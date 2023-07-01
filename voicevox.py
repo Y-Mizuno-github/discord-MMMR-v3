@@ -1,7 +1,6 @@
 import requests
 import json
 import time
-import re
 
 def audio_query(text, speaker, max_retry):
     # 音声合成用のクエリを作成する
