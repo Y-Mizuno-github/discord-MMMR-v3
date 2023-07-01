@@ -18,6 +18,7 @@ from collections import deque
 from dotenv import load_dotenv
 
 import server_member_db as db
+from voicevox import text_to_speech
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -27,6 +28,7 @@ app_commands_bot = app_commands
 tree = app_commands_bot.CommandTree(bot_client)
 
 AudioQ = None
+TextQ = None
 lengthQ = 10
 
 URL_pattern = "https?://[\w/:%#\$&\?\(\)~\.=\+\-]+"
@@ -235,6 +237,8 @@ async def connect_command(interaction: discord.Interaction):
     global VoiceClient_MMMR
     global AudioQ
     global TextQ
+    global itr_AudioQ
+    global itr_TextQ
 
     guild_id = interaction.user.guild.id
 
@@ -253,16 +257,16 @@ async def connect_command(interaction: discord.Interaction):
     VoiceClient_MMMR = await VoiceChannel.connect(author_voicechannel)
     dict_bool_VC_connected[guild_id] = True
     AudioQ = deque([], lengthQ)
+    itr_AudioQ = 0
     TextQ = deque([], lengthQ)
+    itr_TextQ = 0
     MMMR_guild_textchannel_id[guild_id] = interaction.channel_id
-    return_text = "MMMR が参加しました！"
+    return_text = "MMMR が参加しました！\n音声 VOICEVOX:ずんだもん"
     await interaction.response.send_message(return_text)
 
 
 @tree.command(name="disconnect",description="ボイスチャンネルからMMMRを退出させます")
 async def disconnect_command(interaction: discord.Interaction):
-    global itr_TextQ
-    global itr_AudioQ
     global author_voicechannel
     global VoiceClient_MMMR
     global MMMR_guild_textchannel_id
@@ -292,9 +296,72 @@ async def disconnect_command(interaction: discord.Interaction):
 
     itr_TextQ = 0
     itr_AudioQ = 0
+    TextQ.clear()
     AudioQ.clear()
 
     return_text = "MMMR が退出しました！"
     await interaction.response.send_message(return_text)
 
+@tree.command(name="stop",description="MMMRの読み上げを停止します")
+async def stop_command(interaction: discord.Interaction):
+    global VoiceClient_MMMR
+    print("MMMR stop()")
+    for i in range(len(AudioQ) + 1):
+        VoiceClient_MMMR.stop()
+        await asyncio.sleep(0.05)
+    return_text = "MMMR を黙らせました！"
+    await interaction.response.send_message(return_text)
+
+# TTS関係
+@bot_client.event
+async def on_message(message):
+    global VoiceClient_MMMR
+    global MMMR_guild_textchannel_id
+    global dict_bool_VC_connected
+    global itr_TextQ
+    global TextQ
+    guild_id = message.guild.id
+    speaker_id = 3
+    if guild_id in dict_bool_VC_connected and guild_id in MMMR_guild_textchannel_id:
+        if message.channel.id == MMMR_guild_textchannel_id[guild_id] and message.author != bot_client.user and dict_bool_VC_connected[guild_id] == 1:
+            if re.search(URL_pattern, message.content):
+                message.content = re.sub(URL_pattern, 'URL', message.content)
+            speechdata = text_to_speech(message.content, speaker_id)
+            itr_TextQ = add_queue_tts(speechdata, itr_TextQ, TextQ)
+            if not VoiceClient_MMMR.is_playing():
+                print("play_sound()")
+                play_sound(TextQ)
+        else:
+            return
+
+def add_queue_tts(raw_data, itr_TextQ, TextQ):
+    filename = str(itr_TextQ) + ".wav"
+
+    with open(filename, "wb") as out:
+        out.write(raw_data)
+        print("Audio content written to file " + filename)
+
+    TextQ.append(filename)
+    itr_TextQ = itr_TextQ + 1
+    if itr_TextQ > 9:
+        itr_TextQ = 0
+    return itr_TextQ
+
+def play_sound(TextQ):
+    print(len(TextQ))
+    if len(TextQ) == 0:
+        return
+    else:
+        popfile = TextQ.popleft()
+        print("playing " + popfile)
+        source = FFmpegPCMAudio("./"+popfile)
+        VoiceClient_MMMR.play(source, after=lambda e:play_sound(TextQ))
+
+def add_queue_sound(sound_file, itr_AudioQ, AudioQ):
+    AudioQ.append(sound_file)
+    itr_AudioQ = itr_AudioQ + 1
+    if itr_AudioQ > 9:
+        itr_AudioQ = 0
+    return itr_AudioQ
+   
 bot_client.run(os.environ['DISCORD_KEY'])

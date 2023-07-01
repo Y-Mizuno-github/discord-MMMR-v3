@@ -1,4 +1,6 @@
 .env
 *.sqlite
-test.py
+test*.py
 __pycache__/
+*.wav
+.vscode/
