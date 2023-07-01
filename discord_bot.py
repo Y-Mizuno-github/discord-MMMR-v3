@@ -23,7 +23,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot_client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(bot_client)
+app_commands_bot = app_commands
+tree = app_commands_bot.CommandTree(bot_client)
 
 Audio_queue = None
 length_queue = 10
@@ -97,7 +98,7 @@ async def on_voice_state_update(member, before, after):
     print(channel_id_dnd)
     print(type(channel_id_dnd))
 
-    member_bool_dnd, status_member_dnd = member_db.get_bool_DND(member.id,server_id)
+    member_bool_notify, status_member_notify = member_db.get_bool_notify(member.id,server_id)
         
     botRoom = bot_client.get_channel(channel_id_notify)
 
@@ -107,7 +108,7 @@ async def on_voice_state_update(member, before, after):
             if channel_id_dnd is not None:
                 if after.channel.id == channel_id_dnd:
                     return
-            if status_member_dnd == 0 and member_bool_dnd:
+            if status_member_notify == 0 and member_bool_notify == 0:
                 return
             notify_name, status = member_db.get_metrics(member.id, server_id, "notify_name")
             if status == 0:
@@ -121,11 +122,12 @@ async def on_voice_state_update(member, before, after):
             if before.channel.id == channel_id_dnd:
                 return
         if len(before.channel.members) == 0: # 誰も居なくなった場合
-            if status_member_dnd == 0 and member_bool_dnd:
+            if status_member_notify == 0 and member_bool_notify == 0:
                 return
             await botRoom.send(before.channel.name + " に誰もいなくなりました")
 
 @tree.command(name="set_notify_ch",description="入室通知先テキストチャンネルを設定します")
+@app_commands_bot.describe(channel="入室通知先のチャンネルIDを入力してください")
 async def set_notify_ch_command(interaction: discord.Interaction,channel:str):
     global server_db
 
@@ -146,7 +148,8 @@ async def set_notify_ch_command(interaction: discord.Interaction,channel:str):
     await interaction.response.send_message(return_text,ephemeral=True)
 
 @tree.command(name="set_dnd_ch",description="非通知ボイスチャンネルを設定します")
-async def set_dnd_ch_command(interaction: discord.Interaction,channel:str):#デフォルト値を指定
+@app_commands_bot.describe(channel="非通知ボイスチャンネルのチャンネルIDを入力してください")
+async def set_dnd_ch_command(interaction: discord.Interaction,channel:str):
     global server_db
 
     guild_id = interaction.guild_id
@@ -165,7 +168,8 @@ async def set_dnd_ch_command(interaction: discord.Interaction,channel:str):#デ�
     await interaction.response.send_message(return_text,ephemeral=True)
 
 @tree.command(name="set_user_name",description="入室通知での通知名を設定します")
-async def set_user_name_command(interaction: discord.Interaction,username:str):#デフォルト値を指定
+@app_commands_bot.describe(username="入室通知で表示するユーザー名を入力してください")
+async def set_user_name_command(interaction: discord.Interaction,username:str):
     global member_db
 
     member_id = interaction.user.id
@@ -182,6 +186,39 @@ async def set_user_name_command(interaction: discord.Interaction,username:str):#
             break
 
     return_text = "通知名を " + username + " に設定しました"
+    await interaction.response.send_message(return_text,ephemeral=True)
+
+@tree.command(name="set_notify_user",description="入室通知の有無を設定します（ユーザ単位）")
+@app_commands_bot.describe(on_off="on または off と入力してください")
+async def set_notify_user_command(interaction: discord.Interaction,on_off:str):
+    global member_db
+
+    member_id = interaction.user.id
+    guild_id = interaction.guild_id
+    timeout_value = 10
+
+    if on_off == "on":
+        bool_notify_user = 1
+        return_text = "通知をオンに設定しました"
+    elif on_off == "off":
+        bool_notify_user = 0
+        return_text = "通知をオフに設定しました"
+    else:
+        return_text = "オプションは on または off と入力してください"
+        await interaction.response.send_message(return_text,ephemeral=True)
+        return
+    
+    while 1:
+        status = member_db.set_bool_notify(member_id, guild_id, bool_notify_user)
+        if status == 0:
+            break
+        timeout_value += 1
+        if timeout_value > 10:
+            print("/set_notify_user: setting timeout")
+            return_text = "エラーが発生しました"
+            await interaction.response.send_message(return_text,ephemeral=True)
+            return
+
     await interaction.response.send_message(return_text,ephemeral=True)
 
 bot_client.run(os.environ['DISCORD_KEY'])

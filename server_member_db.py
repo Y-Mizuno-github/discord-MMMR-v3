@@ -101,7 +101,7 @@ class member_table:
             self.bool_db_exist = True
 
         if not self.bool_db_exist:
-            self.curs.execute('''CREATE TABLE member(member_id integer, server_id integer, voice_tone text, voice_speed text, notify_name text, DND integer, admin integer, primary key(member_id, server_id))''')
+            self.curs.execute('''CREATE TABLE member(member_id integer, server_id integer, voice_tone text, voice_speed text, notify_name text, notify_on integer, admin integer, primary key(member_id, server_id))''')
 
     def get_metrics(self, member_id:int, server_id:int, metrics:str) -> Tuple[str, int]:
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
@@ -123,8 +123,8 @@ class member_table:
     def set_metrics(self, member_id:int, server_id:int, metrics:str, value:str) -> int:
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
         if self.curs.fetchone() == None: # entry is not exist
-            sql = 'INSERT INTO member (member_id, server_id, voice_tone, voice_speed, notify_name, DND, admin) values (?,?,?,?,?,?,?)'
-            data = (member_id, server_id, None, None, None, 0, 0)
+            sql = 'INSERT INTO member (member_id, server_id, voice_tone, voice_speed, notify_name, notify_on, admin) values (?,?,?,?,?,?,?)'
+            data = (member_id, server_id, None, None, None, 1, 0)
             self.curs.execute(sql,data)
         
         if metrics == "voice_tone":
@@ -141,15 +141,28 @@ class member_table:
         self.conn.commit()
         return 0
     
-    def get_bool_DND(self, member_id:int, server_id:int) -> Tuple[bool, int]:
+    def set_bool_notify(self, member_id:int, server_id:int, value:int) -> int:
+        self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
+        if self.curs.fetchone() == None: # entry is not exist
+            sql = 'INSERT INTO member (member_id, server_id, voice_tone, voice_speed, notify_name, notify_on, admin) values (?,?,?,?,?,?,?)'
+            data = (member_id, server_id, None, None, None, 1, 0)
+            self.curs.execute(sql,data)
+        
+        sql_update = "UPDATE member SET notify_on = ? WHERE member_id = ? and server_id = ?"
+        data = (value, member_id, server_id)
+        self.curs.execute(sql_update,data)
+        self.conn.commit()
+        return 0
+    
+    def get_bool_notify(self, member_id:int, server_id:int) -> Tuple[bool, int]:
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
         row = self.curs.fetchall()
 
         if not row:
-            print("entry not exist (member_table:get_bool_DND)")
+            print("entry not exist (member_table:get_bool_notify)")
             return None, -1
         
-        return row[0]["DND"], 0
+        return row[0]["notify_on"], 0
     
     def get_bool_admin(self, member_id:int, server_id:int) -> Tuple[bool, int]:
         self.curs.execute("SELECT * FROM member WHERE member_id = ? and server_id = ?", (member_id, server_id))
