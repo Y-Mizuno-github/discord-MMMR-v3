@@ -42,8 +42,6 @@ async def on_ready():
     global server_db
     global member_db
 
-    await tree.sync()
-
     print('Login!!!')
     bool_VC_connected = False
     Queue_current = 0
@@ -53,62 +51,18 @@ async def on_ready():
     server_db = db.server_table()
     member_db = db.member_table()
 
-    all_dnd_channel = dict()
+    await tree.sync()
 
 # ボイチャ入室通知
 @bot_client.event
 async def on_voice_state_update(member, before, after):
-    global bool_VC_connected
 
     global server_db
     global member_db
 
-    global all_dnd_channel
-    
-    # チャンネルへの入室ステータスが変更されたとき（ミュートON、OFFに反応しないように分岐）
-    # 通知メッセージを書き込むテキストチャンネル（チャンネルIDを指定）
-    server_id = member.guild.id
-    channel_id_notify_str, status_notify = server_db.get_metrics(server_id,"notify_channel")
-    channel_id_dnd_str, status_dnd = server_db.get_metrics(server_id,"dnd_channel")
-
-    channel_id_notify = int(channel_id_notify_str)
-    channel_id_dnd = int(channel_id_dnd_str)
-
-    print(channel_id_notify)
-    print(type(channel_id_notify))
-
-    print(channel_id_dnd)
-    print(type(channel_id_dnd))
-
-    member_bool_dnd, status_member_dnd = member_db.get_bool_DND(member.id,server_id)
-
-    if status_notify != 0 or status_dnd != 0:
-        print("Error: server_id is not registered.")
-        
-    botRoom = bot_client.get_channel(channel_id_notify)
-
-    # 入室通知（画面共有に反応しないように分岐）
-    if after.channel is not None and after.channel is not before.channel:
-        if before.channel is None: # 参加
-            if after.channel.id == channel_id_dnd:
-                return
-            if status_member_dnd == 0 and member_bool_dnd == 1:
-                all_dnd_channel[after.channel.id] = True
-                return
-            notify_name, status = server_db.get_metrics(member.id,"notify_name")
-            if status == 0:
-                await botRoom.send( notify_name + " が参加しました!")
-            else:
-                await botRoom.send( member.name + " が参加しました!")
-    if before.channel is not None and after.channel is None: # 退出
-        if before.channel.id == channel_id_dnd:
-            return
-        if len(before.channel.members) == 0: # 誰も居なくなった場合
-            if status_member_dnd == 0 and member_bool_dnd == 1:
-                return
-            await botRoom.send(before.channel.name + " に誰もいなくなりました")
-
-    if bool_VC_connected and after.channel is None: #  MMMR自動退出処理
+    # MMMR自動退出処理
+    global bool_VC_connected
+    if bool_VC_connected and after.channel is None:
         if member.id != bot_client.user.id:
             if member.guild.voice_client.channel is before.channel:
                 num_of_member = 0
@@ -118,7 +72,58 @@ async def on_voice_state_update(member, before, after):
                         await asyncio.sleep(1)
                         await member.guild.voice_client.disconnect()
                         bool_VC_connected = False
+    # MMMR自動退出処理おわり
 
+    # チャンネルへの入室ステータスが変更されたとき（ミュートON、OFFに反応しないように分岐）
+    # 通知メッセージを書き込むテキストチャンネル（チャンネルIDを指定）
+    server_id = member.guild.id
+    channel_id_notify_str, status_notify = server_db.get_metrics(server_id,"notify_channel")
+    channel_id_dnd_str, status_dnd = server_db.get_metrics(server_id,"dnd_channel")
+
+    if status_notify == 0:
+        channel_id_notify = int(channel_id_notify_str)
+    else:
+        print("notice: notify channel id is not registered.")
+        return
+    
+    if channel_id_dnd_str == None:
+        channel_id_dnd = None
+    else:
+        channel_id_dnd = int(channel_id_dnd_str)
+
+    print(channel_id_notify)
+    print(type(channel_id_notify))
+
+    print(channel_id_dnd)
+    print(type(channel_id_dnd))
+
+    member_bool_dnd, status_member_dnd = member_db.get_bool_DND(member.id,server_id)
+        
+    botRoom = bot_client.get_channel(channel_id_notify)
+
+    # 入室通知（画面共有に反応しないように分岐）
+    if after.channel is not None and after.channel is not before.channel:
+        if before.channel is None: # 参加
+            if channel_id_dnd is not None:
+                if after.channel.id == channel_id_dnd:
+                    return
+            if status_member_dnd == 0 and member_bool_dnd:
+                return
+            notify_name, status = member_db.get_metrics(member.id, server_id, "notify_name")
+            if status == 0:
+                print("vc entry: notify name")
+                await botRoom.send( notify_name + " が参加しました!")
+            else:
+                print("vc entry: default name")
+                await botRoom.send( member.name + " が参加しました!")
+    if before.channel is not None and after.channel is None: # 退出
+        if channel_id_dnd is not None:
+            if before.channel.id == channel_id_dnd:
+                return
+        if len(before.channel.members) == 0: # 誰も居なくなった場合
+            if status_member_dnd == 0 and member_bool_dnd:
+                return
+            await botRoom.send(before.channel.name + " に誰もいなくなりました")
 
 @tree.command(name="set_notify_ch",description="入室通知先テキストチャンネルを設定します")
 async def set_notify_ch_command(interaction: discord.Interaction,channel:str):
@@ -157,6 +162,26 @@ async def set_dnd_ch_command(interaction: discord.Interaction,channel:str):#デ�
             break
 
     return_text = "非通知ボイスチャンネルが設定されました"
+    await interaction.response.send_message(return_text,ephemeral=True)
+
+@tree.command(name="set_user_name",description="入室通知での通知名を設定します")
+async def set_user_name_command(interaction: discord.Interaction,username:str):#デフォルト値を指定
+    global member_db
+
+    member_id = interaction.user.id
+    guild_id = interaction.guild_id
+    timeout_value = 10
+    
+    while 1:
+        status = member_db.set_metrics(member_id, guild_id, "notify_name", username)
+        if status == 0:
+            break
+        timeout_value += 1
+        if timeout_value > 10:
+            print("/set_user_name: setting timeout")
+            break
+
+    return_text = "通知名を " + username + " に設定しました"
     await interaction.response.send_message(return_text,ephemeral=True)
 
 bot_client.run(os.environ['DISCORD_KEY'])
