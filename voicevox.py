@@ -2,9 +2,6 @@ import requests
 import json
 import time
 
-import google.auth.transport.requests
-import google.oauth2.id_token
-
 def audio_query(text, speaker, max_retry, url_voicevox):
     # 音声合成用のクエリを作成する
     query_payload = {"text": text, "speaker": speaker}
