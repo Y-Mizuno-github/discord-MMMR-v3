@@ -27,11 +27,10 @@ AudioQ = None
 TextQ = None
 lengthQ = 10
 
+load_dotenv()
 url_voicevox = os.environ['URL_VOICEVOX']
 
 URL_pattern = "https?://[\w/:%#\$&\?\(\)~\.=\+\-]+"
-
-load_dotenv()
 
 MMMR_guild_status = dict()
 
