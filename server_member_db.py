@@ -3,7 +3,7 @@ from typing import Tuple
 
 class server_table:
     def __init__(self):
-        self.db_name = 'server_info.sqlite'
+        self.db_name = 'sqlite_db/server_info.sqlite'
         self.conn = sqlite3.connect(self.db_name)
         self.conn.row_factory = sqlite3.Row
         self.curs = self.conn.cursor()
@@ -89,7 +89,7 @@ class server_table:
 
 class member_table:
     def __init__(self):
-        self.db_name = 'member_info.sqlite'
+        self.db_name = 'sqlite_db/member_info.sqlite'
         self.conn = sqlite3.connect(self.db_name)
         self.conn.row_factory = sqlite3.Row
         self.curs = self.conn.cursor()
