@@ -29,7 +29,6 @@ lengthQ = 10
 
 load_dotenv()
 url_voicevox = os.environ['URL_VOICEVOX']
-print(type(url_voicevox))
 
 URL_pattern = "https?://[\w/:%#\$&\?\(\)~\.=\+\-]+"
 
