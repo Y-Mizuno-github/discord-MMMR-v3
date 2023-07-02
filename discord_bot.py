@@ -29,6 +29,7 @@ lengthQ = 10
 
 load_dotenv()
 url_voicevox = os.environ['URL_VOICEVOX']
+print(type(url_voicevox))
 
 URL_pattern = "https?://[\w/:%#\$&\?\(\)~\.=\+\-]+"
 
@@ -326,7 +327,7 @@ async def on_message(message):
         if message.channel.id == MMMR_guild_textchannel_id[guild_id] and message.author != bot_client.user and dict_bool_VC_connected[guild_id] == 1:
             if re.search(URL_pattern, message.content):
                 message.content = re.sub(URL_pattern, 'URL', message.content)
-            speechdata = text_to_speech(message.content, speaker_id, url_voicevox)
+            speechdata = text_to_speech(message.content, url_voicevox, speaker_id)
             itr_TextQ = add_queue_tts(speechdata, itr_TextQ, TextQ)
             if not VoiceClient_MMMR.is_playing():
                 print("play_sound()")
