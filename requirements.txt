@@ -1,7 +1,4 @@
-numpy
-discord.py
-pysqlite3
-dropbox
-requests
+discord.py == 2.3.1
+requests == 2.31.0
 asyncio
-python-dotenv
+python-dotenv == 1.0.0

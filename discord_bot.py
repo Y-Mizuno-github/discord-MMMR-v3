@@ -316,6 +316,10 @@ async def on_message(message):
     global dict_bool_VC_connected
     global itr_TextQ
     global TextQ
+
+    if message.guild == None:
+        return
+    
     guild_id = message.guild.id
     speaker_id = 3
     if guild_id in dict_bool_VC_connected and guild_id in MMMR_guild_textchannel_id:
