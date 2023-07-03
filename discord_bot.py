@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 import server_member_db as db
 from voicevox import text_to_speech
+from voicevox import dummy_wakeup
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -258,6 +259,7 @@ async def connect_command(interaction: discord.Interaction):
     itr_TextQ = 0
     MMMR_guild_textchannel_id[guild_id] = interaction.channel_id
     return_text = "MMMR が参加しました！\n音声 VOICEVOX:ずんだもん"
+    dummy_wakeup(url_voicevox)
     await interaction.response.send_message(return_text)
 
 

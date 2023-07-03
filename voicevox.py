@@ -36,3 +36,9 @@ def text_to_speech(text, url_voicevox, speaker=8, max_retry=20):
     # synthesis
     voice_data=synthesis(speaker,query_data,max_retry,url_voicevox)
     return voice_data
+
+def dummy_wakeup(url_voicevox):
+    query_payload = {"text": "ダミー", "speaker": 8}
+    max_retry = 10
+    for query_i in range(max_retry):
+        r = requests.post(url_voicevox + "/audio_query", params=query_payload, timeout=(10.0, 300.0))
