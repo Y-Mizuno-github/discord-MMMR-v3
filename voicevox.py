@@ -42,3 +42,7 @@ def dummy_wakeup(url_voicevox):
     max_retry = 10
     for query_i in range(max_retry):
         r = requests.post(url_voicevox + "/audio_query", params=query_payload, timeout=(10.0, 300.0))
+        if r.status_code == 200:
+            query_data = r.json()
+            break
+        time.sleep(0.1)

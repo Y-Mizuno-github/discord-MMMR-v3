@@ -259,8 +259,8 @@ async def connect_command(interaction: discord.Interaction):
     itr_TextQ = 0
     MMMR_guild_textchannel_id[guild_id] = interaction.channel_id
     return_text = "MMMR が参加しました！\n音声 VOICEVOX:ずんだもん"
-    dummy_wakeup(url_voicevox)
     await interaction.response.send_message(return_text)
+    dummy_wakeup(url_voicevox)
 
 
 @tree.command(name="disconnect",description="ボイスチャンネルからMMMRを退出させます")
